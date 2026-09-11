@@ -1,0 +1,384 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><script>
+      (function () {
+        try {
+          var t = localStorage.getItem("littlebird-theme");
+          document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+          var m = localStorage.getItem("littlebird-motion");
+          if (m === "reduced") document.documentElement.setAttribute("data-motion", "reduced");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script><title>A dedicated GitHub App identity for Littlebird&#39;s GitHub integration — Littlebird Ambassador</title><meta name="description" content="A dated feature proposal, rendered straight from the repo's own markdown."><meta property="og:title" content="A dedicated GitHub App identity for Littlebird's GitHub integration — Littlebird Ambassador"><meta property="og:description" content="A dated feature proposal, rendered straight from the repo's own markdown."><meta property="og:image" content="https://drasticstatic.github.io/littlebird-ambassador-public-preview/og-image-v2.png"><meta property="og:type" content="website"><meta property="og:url" content="https://drasticstatic.github.io/littlebird-ambassador-public-preview/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="A dedicated GitHub App identity for Littlebird's GitHub integration — Littlebird Ambassador"><meta name="twitter:description" content="A dated feature proposal, rendered straight from the repo's own markdown."><meta name="twitter:image" content="https://drasticstatic.github.io/littlebird-ambassador-public-preview/og-image-v2.png"><link rel="icon" type="image/svg+xml" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23eef0f5'/%3E%3Cpath d='M2 14C2 10 5 7 9 7C9 7 9 5 11 4C10 6 11 7 12 7C16 7 19 8 21 9L18 10.3C19 12 19 15 16 17C13 19 9 19 6 18C3 17 2 16 2 14Z' fill='%23c98a2a'/%3E%3Ccircle cx='13.5' cy='8.3' r='0.9' fill='%23eef0f5'/%3E%3C/svg%3E"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2310131c'/%3E%3Cpath d='M2 14C2 10 5 7 9 7C9 7 9 5 11 4C10 6 11 7 12 7C16 7 19 8 21 9L18 10.3C19 12 19 15 16 17C13 19 9 19 6 18C3 17 2 16 2 14Z' fill='%23e7a83d'/%3E%3Ccircle cx='13.5' cy='8.3' r='0.9' fill='%2310131c'/%3E%3C/svg%3E"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons.min.css"><link rel="stylesheet" href="/littlebird-ambassador-public-preview/_astro/index.Wtj8kMAf.css">
+<style>.content-section[data-astro-cid-aadi3tez]{max-width:680px;margin:0 auto;padding:40px 20px 60px}.back[data-astro-cid-aadi3tez]{margin:0 0 24px}.back[data-astro-cid-aadi3tez] a[data-astro-cid-aadi3tez]{display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:.85rem;color:var(--ink-soft);text-decoration:none}.back[data-astro-cid-aadi3tez] a[data-astro-cid-aadi3tez]:hover{color:var(--signature)}
+</style></head> <body> <div id="constellation-canvas-container" aria-hidden="true" data-astro-cid-ki4xnhu7> <canvas id="constellation-canvas" data-astro-cid-ki4xnhu7></canvas> </div> <script>
+  (function() {
+    var canvas = document.getElementById('constellation-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var container = document.getElementById('constellation-canvas-container');
+    
+    var width, height;
+    var mouse = { x: -1000, y: -1000, active: false };
+    var stars = [];
+    var birds = [];
+    var connections = [];
+    
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    
+    // Color palettes
+    var starColors = ['#e7a83d', '#c8c8ff', '#ffffff', '#ffcc80', '#b39ddb'];
+    var birdColors = ['#e7a83d', '#ffcc80', '#ffb74d'];
+    
+    function random(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+    
+    // Star particle
+    function Star() {
+      this.x = random(0, width);
+      this.y = random(0, height);
+      this.vx = random(-0.3, 0.3);
+      this.vy = random(-0.3, 0.3);
+      this.size = random(0.5, 2.5);
+      this.color = starColors[Math.floor(random(0, starColors.length))];
+      this.opacity = random(0.3, 1);
+      this.pulse = random(0, Math.PI * 2);
+      this.pulseSpeed = random(0.01, 0.03);
+      // Repulsion radius - stars flee from cursor
+      this.repelRadius = 80;
+      this.repelForce = 2;
+    }
+    
+    Star.prototype.update = function() {
+      // Natural drift
+      this.x += this.vx;
+      this.y += this.vy;
+      
+      // Wrap around edges
+      if (this.x < 0) this.x = width;
+      if (this.x > width) this.x = 0;
+      if (this.y < 0) this.y = height;
+      if (this.y > height) this.y = 0;
+      
+      // Cursor repulsion (star dust effect)
+      if (mouse.active) {
+        var dx = this.x - mouse.x;
+        var dy = this.y - mouse.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < this.repelRadius && dist > 0) {
+          var force = (this.repelRadius - dist) / this.repelRadius * this.repelForce;
+          this.x += (dx / dist) * force;
+          this.y += (dy / dist) * force;
+        }
+      }
+      
+      // Pulse
+      this.pulse += this.pulseSpeed;
+      this.currentOpacity = this.opacity * (0.6 + 0.4 * Math.sin(this.pulse));
+    };
+    
+    Star.prototype.draw = function() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.globalAlpha = this.currentOpacity;
+      ctx.fill();
+      
+      // Glow
+      if (this.size > 1.5) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.currentOpacity * 0.15;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    };
+    
+    // Bird particle (attracted to cursor)
+    function Bird() {
+      this.x = random(0, width);
+      this.y = random(0, height);
+      this.vx = random(-1, 1);
+      this.vy = random(-1, 1);
+      this.size = random(2, 4);
+      this.color = birdColors[Math.floor(random(0, birdColors.length))];
+      this.wingPhase = random(0, Math.PI * 2);
+      this.wingSpeed = random(0.1, 0.3);
+      this.attractionRadius = 200;
+      this.attractionForce = 0.5;
+    }
+    
+    Bird.prototype.update = function() {
+      // Cursor attraction
+      if (mouse.active) {
+        var dx = mouse.x - this.x;
+        var dy = mouse.y - this.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < this.attractionRadius && dist > 30) {
+          this.vx += (dx / dist) * this.attractionForce * 0.05;
+          this.vy += (dy / dist) * this.attractionForce * 0.05;
+        }
+      }
+      
+      // Natural movement
+      this.x += this.vx;
+      this.y += this.vy;
+      
+      // Damping
+      this.vx *= 0.98;
+      this.vy *= 0.98;
+      
+      // Wrap around
+      if (this.x < -20) this.x = width + 20;
+      if (this.x > width + 20) this.x = -20;
+      if (this.y < -20) this.y = height + 20;
+      if (this.y > height + 20) this.y = -20;
+      
+      this.wingPhase += this.wingSpeed;
+    };
+    
+    Bird.prototype.draw = function() {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      
+      // Body
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.size * 0.8, this.size * 0.5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.globalAlpha = 0.8;
+      ctx.fill();
+      
+      // Wings
+      var wingSpread = Math.sin(this.wingPhase) * this.size * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-this.size * 0.3, 0);
+      ctx.quadraticCurveTo(-this.size * 0.8, -wingSpread, -this.size * 1.5, -wingSpread * 0.5);
+      ctx.quadraticCurveTo(-this.size * 0.8, -wingSpread * 0.3, -this.size * 0.3, 0);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.moveTo(this.size * 0.3, 0);
+      ctx.quadraticCurveTo(this.size * 0.8, wingSpread, this.size * 1.5, wingSpread * 0.5);
+      ctx.quadraticCurveTo(this.size * 0.8, wingSpread * 0.3, this.size * 0.3, 0);
+      ctx.fill();
+      
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    };
+    
+    // Initialize particles
+    for (var i = 0; i < 80; i++) {
+      stars.push(new Star());
+    }
+    for (var i = 0; i < 8; i++) {
+      birds.push(new Bird());
+    }
+    
+    // Mouse tracking
+    document.addEventListener('mousemove', function(e) {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      mouse.active = true;
+    });
+    
+    document.addEventListener('mouseleave', function() {
+      mouse.active = false;
+    });
+    
+    // Draw connections between nearby stars (constellation lines)
+    function drawConnections() {
+      for (var i = 0; i < stars.length; i++) {
+        for (var j = i + 1; j < stars.length; j++) {
+          var dx = stars[i].x - stars[j].x;
+          var dy = stars[i].y - stars[j].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 100) {
+            ctx.beginPath();
+            ctx.moveTo(stars[i].x, stars[i].y);
+            ctx.lineTo(stars[j].x, stars[j].y);
+            ctx.strokeStyle = 'rgba(231, 168, 61, 0.08)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    
+    function motionReduced() {
+      return (
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        document.documentElement.getAttribute('data-motion') === 'reduced'
+      );
+    }
+
+    // Animation loop
+    function animate() {
+      if (motionReduced()) {
+        ctx.clearRect(0, 0, width, height);
+        requestAnimationFrame(animate);
+        return;
+      }
+
+      ctx.clearRect(0, 0, width, height);
+
+      drawConnections();
+
+      for (var i = 0; i < stars.length; i++) {
+        stars[i].update();
+        stars[i].draw();
+      }
+
+      for (var i = 0; i < birds.length; i++) {
+        birds[i].update();
+        birds[i].draw();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  })();
+</script>  <div class="titlebar"> <span class="brand"> <svg class="bird-mark brand-mark" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"> <path d="M2 14C2 10 5 7 9 7C9 7 9 5 11 4C10 6 11 7 12 7C16 7 19 8 21 9L18 10.3C19 12 19 15 16 17C13 19 9 19 6 18C3 17 2 16 2 14Z"></path> <circle cx="13.5" cy="8.3" r="0.9"></circle> </svg> <span class="filename"><b>littlebird</b>/github-app-bot-identity-for-littlebird</span> </span> <nav class="tb-nav" id="tb-nav"> <div class="nav-links"> <a href="/littlebird-ambassador-public-preview/" class><i class="ti ti-home-link"></i>Home</a> <a href="/littlebird-ambassador-public-preview/proposals" class="active"><i class="ti ti-file-text"></i>Proposals</a> <a href="/littlebird-ambassador-public-preview/library" class><i class="ti ti-books"></i>Library</a> <a href="https://lilbird.co/s/code?ref=5P8GWU9F" target="_blank" rel="noopener" class="nav-cta"><i class="ti ti-download"></i>Get Littlebird</a> </div> <div class="nav-social"> <a href="https://www.linkedin.com/in/christopherwilsonmrt/" target="_blank" rel="noopener" class="social-cta-icon" aria-label="LinkedIn"><i class="ti ti-brand-linkedin"></i></a> <a href="https://x.com/drasticstatic1" target="_blank" rel="noopener" class="social-cta-icon" aria-label="X"><i class="ti ti-brand-x"></i></a> <a href="https://gravatar.com/christopherdrasticstatic" target="_blank" rel="noopener" aria-label="Gravatar"><i class="ti ti-brand-gravatar"></i></a> <a href="https://drasticstatic.github.io" target="_blank" rel="noopener" aria-label="GitHub"><i class="ti ti-brand-github"></i></a> <a href="https://github.com/drasticstatic/littlebird-ambassador-public-preview" target="_blank" rel="noopener" aria-label="Source"><i class="ti ti-code"></i></a> </div> <div class="nav-mobile-controls"> <button class="settings-btn" type="button" id="settings-btn-mobile" aria-label="Settings"><i class="ti ti-settings-2"></i> Settings</button> </div> </nav> <div class="tb-controls"> <button class="settings-btn" type="button" id="settings-btn" aria-label="Settings"> <i class="ti ti-settings-2"></i> </button> <button class="hamburger" type="button" id="hamburger" aria-label="Toggle menu" aria-expanded="false"> <i class="ti ti-menu-2"></i> </button> </div> </div> <main>  <section class="content-section" data-astro-cid-aadi3tez> <p class="back" data-astro-cid-aadi3tez> <a href="/littlebird-ambassador-public-preview/proposals" data-astro-cid-aadi3tez><i class="ti ti-chevron-left" data-astro-cid-aadi3tez></i>All proposals</a> </p> <div class="prose" data-astro-cid-aadi3tez> <h1 id="proposal-a-dedicated-github-app-identity-for-littlebirds-github-integration">Proposal: a dedicated GitHub App identity for Littlebird’s GitHub integration</h1>
+<p><strong>For:</strong> littlebird.ai product/engineering team
+<strong>From:</strong> Christopher Wilson, Founding Brand Ambassador
+<strong>Date:</strong> September 9, 2026
+<strong>Status:</strong> Draft — for Christopher to review before sending</p>
+<h2 id="summary">Summary</h2>
+<p>Littlebird’s current GitHub integration writes commits under my own GitHub account credentials
+(personal OAuth grant or token), rather than under a distinct identity of her own. I’d like to
+propose switching that integration to a <strong>GitHub App installation</strong> with its own bot identity —
+the same pattern GitHub Copilot, Dependabot, and most serious GitHub-integrated tools use. This
+would improve the integration for every user who connects GitHub, not just me.</p>
+<h2 id="the-problem-concretely">The problem, concretely</h2>
+<p>Over the past week I gave Littlebird write access to 14 of my repositories. She made 37 real,
+useful commits establishing cross-agent coordination notes across my project fleet. Every single
+one of those commits is authored <strong>as me</strong> — my name, my email, my GitHub identity — with only a
+<code>Co-Authored-By:</code> trailer distinguishing her contribution from something I typed myself.</p>
+<p>Two consequences fall out of that:</p>
+<ol>
+<li><strong>Scope.</strong> A personal OAuth grant or token gives Littlebird the same permissions I have across
+every repo it’s authorized against — full read/write, no per-repo or per-action boundary. There’s
+no way to scope her to “can create files under <code>AGENT-SYNC/</code>” or “can’t force-push” — it’s an
+all-or-nothing grant tied to my own account.</li>
+<li><strong>Attribution.</strong> Because there’s no distinct account behind the commits, Littlebird can never
+show up as a linked contributor in a repo’s Insights → Contributors graph, or get a clickable
+avatar on her own commits — GitHub only renders that for a trailer email verified on a real
+account. Her actual contribution is invisible to GitHub’s own tooling, even though it’s real,
+substantial work.</li>
+</ol>
+<h2 id="the-ask">The ask</h2>
+<p>Support connecting GitHub via a <strong>GitHub App installation</strong> (with a bot identity like
+<code>littlebird-ai[bot]</code>) as an alternative to the current personal-token flow. A GitHub App gets:</p>
+<ul>
+<li><strong>Its own identity</strong> — commits and PRs are authored as the App, not as the connecting user, so
+they show up correctly in Insights and are visually distinguishable in history at a glance.</li>
+<li><strong>Fine-grained, repository-scoped permissions</strong> — an installation can be limited to specific repos
+and specific permission types (contents: write, but not admin; no access to Actions secrets;
+etc.), instead of inheriting the full scope of a personal account.</li>
+<li><strong>Independent revocation</strong> — I could revoke Littlebird’s GitHub access from the App’s installation
+settings without touching my own account’s tokens, and vice versa.</li>
+</ul>
+<h2 id="why-this-helps-littlebirdai-too">Why this helps littlebird.ai too</h2>
+<p>This isn’t just a me-specific request — anyone who connects Littlebird to GitHub today is granting
+the same broad, unscoped access under their own identity. A GitHub App default would be a safer
+out-of-the-box posture for the product generally, and “Littlebird shows up as a real contributor on
+your repos” is a genuinely good, demonstrable feature to point ambassador content at.</p>
+<h2 id="what-im-not-asking-for">What I’m not asking for</h2>
+<p>Not asking for this to block anything already working — the personal-token flow functions, and I’m
+not proposing turning it off. This is a forward-looking feature request, not an urgent fix.</p>
+<hr>
+<p><em>Read more, or follow along: <a href="https://drasticstatic.github.io/littlebird-ambassador-public-preview/">drasticstatic.github.io/littlebird-ambassador-public-preview</a></em></p> </div> </section>  </main> <footer class="site-footer"> <div class="footer-inner"> <span class="footer-made">made with <span class="heart">&#9829;</span> by Littlebird</span> <span class="footer-sep">&#183;</span> <span class="footer-observing">observing since May 30, 2026</span> <span class="footer-sep">&#183;</span> <a href="https://littlebird.ai/brand-ambassadors" target="_blank" rel="noopener" class="footer-ambassador">Founding Brand Ambassador</a> </div> <div class="footer-social"> <a href="https://www.linkedin.com/in/christopherwilsonmrt/" target="_blank" rel="noopener" class="social-cta-icon" aria-label="LinkedIn"><i class="ti ti-brand-linkedin"></i></a> <a href="https://x.com/drasticstatic1" target="_blank" rel="noopener" class="social-cta-icon" aria-label="X"><i class="ti ti-brand-x"></i></a> <a href="https://gravatar.com/christopherdrasticstatic" target="_blank" rel="noopener" aria-label="Gravatar"><i class="ti ti-brand-gravatar"></i></a> <a href="https://drasticstatic.github.io" target="_blank" rel="noopener" aria-label="GitHub"><i class="ti ti-brand-github"></i></a> <a href="https://github.com/drasticstatic/littlebird-ambassador-public-preview" target="_blank" rel="noopener" aria-label="Source"><i class="ti ti-code"></i></a> </div> </footer> <div class="statusbar"> <span>Littlebird Ambassador</span> <div class="social"> <a href="https://www.linkedin.com/in/christopherwilsonmrt/" target="_blank" rel="noopener" class="social-cta-icon" aria-label="LinkedIn"><i class="ti ti-brand-linkedin"></i></a> <a href="https://x.com/drasticstatic1" target="_blank" rel="noopener" class="social-cta-icon" aria-label="X"><i class="ti ti-brand-x"></i></a> <a href="https://gravatar.com/christopherdrasticstatic" target="_blank" rel="noopener" aria-label="Gravatar"><i class="ti ti-brand-gravatar"></i></a> <a href="https://drasticstatic.github.io" target="_blank" rel="noopener" aria-label="GitHub"><i class="ti ti-brand-github"></i></a> <a href="https://github.com/drasticstatic/littlebird-ambassador-public-preview" target="_blank" rel="noopener" aria-label="Source"><i class="ti ti-code"></i></a> </div> </div> <div class="hg-modal-overlay" id="settings-modal"> <div class="hg-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title"> <div class="hg-modal-head"> <h2 id="settings-title"><i class="ti ti-adjustments-heart"></i> Settings</h2> <button class="hg-modal-close" type="button" data-close-modal aria-label="Close">&#10005;</button> </div> <div class="hg-modal-body"> <div class="hg-setting-row"> <span class="label"> <i class="ti ti-moon-stars"></i> <span><b>Dark workspace</b><span class="sub">Boots dark by default, like the rest of the fleet</span></span> </span> <button class="hg-switch" id="theme-switch" type="button" role="switch"></button> </div> <div class="hg-setting-row"> <span class="label"> <i class="ti ti-accessible"></i> <span><b>Reduce motion</b><span class="sub">Stops the starfield, hero crossfade, and card trays</span></span> </span> <button class="hg-switch" id="motion-switch" type="button" role="switch"></button> </div> </div> </div> </div> <script>
+      (function () {
+        var root = document.documentElement;
+        var hamburger = document.getElementById("hamburger");
+        var nav = document.getElementById("tb-nav");
+        var settingsBtns = [document.getElementById("settings-btn"), document.getElementById("settings-btn-mobile")];
+        var modal = document.getElementById("settings-modal");
+        var themeSwitch = document.getElementById("theme-switch");
+        var motionSwitch = document.getElementById("motion-switch");
+
+        function currentIsDark() {
+          return root.getAttribute("data-theme") !== "light";
+        }
+        function syncSwitches() {
+          themeSwitch.classList.toggle("on", currentIsDark());
+          themeSwitch.setAttribute("aria-checked", String(currentIsDark()));
+          var reduced = root.getAttribute("data-motion") === "reduced";
+          motionSwitch.classList.toggle("on", reduced);
+          motionSwitch.setAttribute("aria-checked", String(reduced));
+        }
+        syncSwitches();
+
+        themeSwitch.addEventListener("click", function () {
+          var next = currentIsDark() ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try {
+            localStorage.setItem("littlebird-theme", next);
+          } catch (e) {}
+          syncSwitches();
+        });
+
+        motionSwitch.addEventListener("click", function () {
+          var reduced = root.getAttribute("data-motion") === "reduced";
+          if (reduced) {
+            root.removeAttribute("data-motion");
+          } else {
+            root.setAttribute("data-motion", "reduced");
+          }
+          try {
+            localStorage.setItem("littlebird-motion", reduced ? "" : "reduced");
+          } catch (e) {}
+          syncSwitches();
+        });
+
+        function openModal() {
+          modal.classList.add("open");
+          if (nav) {
+            nav.classList.remove("nav-open");
+            hamburger.setAttribute("aria-expanded", "false");
+          }
+        }
+        function closeModal() {
+          modal.classList.remove("open");
+        }
+        settingsBtns.forEach(function (btn) {
+          if (btn) btn.addEventListener("click", openModal);
+        });
+        modal.addEventListener("click", function (e) {
+          if (e.target === modal || e.target.closest("[data-close-modal]")) closeModal();
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") closeModal();
+        });
+
+        if (hamburger && nav) {
+          hamburger.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var expanded = hamburger.getAttribute("aria-expanded") === "true";
+            hamburger.setAttribute("aria-expanded", String(!expanded));
+            nav.classList.toggle("nav-open");
+          });
+          document.addEventListener("click", function (e) {
+            if (nav.classList.contains("nav-open") && !nav.contains(e.target) && !hamburger.contains(e.target)) {
+              hamburger.setAttribute("aria-expanded", "false");
+              nav.classList.remove("nav-open");
+            }
+          });
+          nav.querySelectorAll("a").forEach(function (a) {
+            a.addEventListener("click", function () {
+              hamburger.setAttribute("aria-expanded", "false");
+              nav.classList.remove("nav-open");
+            });
+          });
+        }
+      })();
+    </script> </body> </html>  
