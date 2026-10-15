@@ -1,0 +1,415 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><script>
+      (function () {
+        try {
+          var t = localStorage.getItem("littlebird-theme");
+          document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+          var m = localStorage.getItem("littlebird-motion");
+          if (m === "reduced") document.documentElement.setAttribute("data-motion", "reduced");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script><title>Mitigations for Littlebird&#39;s turn-limited execution model — Littlebird Ambassador</title><meta name="description" content="A dated feature proposal, rendered straight from the repo's own markdown."><meta property="og:title" content="Mitigations for Littlebird's turn-limited execution model — Littlebird Ambassador"><meta property="og:description" content="A dated feature proposal, rendered straight from the repo's own markdown."><meta property="og:image" content="https://drasticstatic.github.io/littlebird-ambassador-public-preview/og-image-v2.png"><meta property="og:type" content="website"><meta property="og:url" content="https://drasticstatic.github.io/littlebird-ambassador-public-preview/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Mitigations for Littlebird's turn-limited execution model — Littlebird Ambassador"><meta name="twitter:description" content="A dated feature proposal, rendered straight from the repo's own markdown."><meta name="twitter:image" content="https://drasticstatic.github.io/littlebird-ambassador-public-preview/og-image-v2.png"><link rel="icon" type="image/svg+xml" media="(prefers-color-scheme: light)" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23eef0f5'/%3E%3Cpath d='M2 14C2 10 5 7 9 7C9 7 9 5 11 4C10 6 11 7 12 7C16 7 19 8 21 9L18 10.3C19 12 19 15 16 17C13 19 9 19 6 18C3 17 2 16 2 14Z' fill='%23c98a2a'/%3E%3Ccircle cx='13.5' cy='8.3' r='0.9' fill='%23eef0f5'/%3E%3C/svg%3E"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2310131c'/%3E%3Cpath d='M2 14C2 10 5 7 9 7C9 7 9 5 11 4C10 6 11 7 12 7C16 7 19 8 21 9L18 10.3C19 12 19 15 16 17C13 19 9 19 6 18C3 17 2 16 2 14Z' fill='%23e7a83d'/%3E%3Ccircle cx='13.5' cy='8.3' r='0.9' fill='%2310131c'/%3E%3C/svg%3E"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.46.0/dist/tabler-icons.min.css"><!-- Themify Icons, added 2026-09-21, re-hosted locally same day after it broke every Tabler
+         icon site-wide: the vendor CSS sets font-family via a blanket
+         [class^="ti-"], [class*=" ti-"] selector, which also matches Tabler's own class="ti
+         ti-name" icons (same specificity, loads later in the cascade, so it silently won on
+         every single one). themify-icons-scoped.css is that same upstream file with one change —
+         :not([class~="ti"]) added to the blanket selector — so it only ever claims elements that
+         are EXCLUSIVELY Themify's own single-class convention (class="ti-name", no base "ti"
+         class), never Tabler's two-class one. Safe to use any Themify icon name from here on
+         without needing to whitelist it. Also solves the original problem that Themify ships no
+         official precompiled CSS (source is Sass-only) and no CDN/npm distribution carries one —
+         this is hosted locally instead of pointing at an unpinned third-party GitHub mirror. --><link rel="stylesheet" href="/littlebird-ambassador-public-preview/themify-icons-scoped.css"><link rel="stylesheet" href="/littlebird-ambassador-public-preview/_astro/Base.C3nQ9fHv.css"><style>.content-section[data-astro-cid-zhdoeez7]{max-width:680px;margin:0 auto;padding:40px 20px 60px}.back[data-astro-cid-zhdoeez7]{margin:0 0 24px}.back[data-astro-cid-zhdoeez7] a[data-astro-cid-zhdoeez7]{font-family:var(--font-mono);color:var(--ink-soft);align-items:center;gap:4px;font-size:.85rem;text-decoration:none;display:inline-flex}.back[data-astro-cid-zhdoeez7] a[data-astro-cid-zhdoeez7]:hover{color:var(--signature)}
+</style></head><body><div id="constellation-canvas-container" aria-hidden="true" data-astro-cid-pu3aau2j><canvas id="constellation-canvas" data-astro-cid-pu3aau2j></canvas></div><script>
+  (function() {
+    var canvas = document.getElementById('constellation-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var container = document.getElementById('constellation-canvas-container');
+    
+    var width, height;
+    var mouse = { x: -1000, y: -1000, active: false };
+    var stars = [];
+    var birds = [];
+    var connections = [];
+    
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    
+    // Color palettes
+    var starColors = ['#e7a83d', '#c8c8ff', '#ffffff', '#ffcc80', '#b39ddb'];
+    var birdColors = ['#e7a83d', '#ffcc80', '#ffb74d'];
+    
+    function random(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+    
+    // Star particle
+    function Star() {
+      this.x = random(0, width);
+      this.y = random(0, height);
+      this.vx = random(-0.3, 0.3);
+      this.vy = random(-0.3, 0.3);
+      this.size = random(0.5, 2.5);
+      this.color = starColors[Math.floor(random(0, starColors.length))];
+      this.opacity = random(0.3, 1);
+      this.pulse = random(0, Math.PI * 2);
+      this.pulseSpeed = random(0.01, 0.03);
+      // Repulsion radius - stars flee from cursor
+      this.repelRadius = 80;
+      this.repelForce = 2;
+    }
+    
+    Star.prototype.update = function() {
+      // Natural drift
+      this.x += this.vx;
+      this.y += this.vy;
+      
+      // Wrap around edges
+      if (this.x < 0) this.x = width;
+      if (this.x > width) this.x = 0;
+      if (this.y < 0) this.y = height;
+      if (this.y > height) this.y = 0;
+      
+      // Cursor repulsion (star dust effect)
+      if (mouse.active) {
+        var dx = this.x - mouse.x;
+        var dy = this.y - mouse.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < this.repelRadius && dist > 0) {
+          var force = (this.repelRadius - dist) / this.repelRadius * this.repelForce;
+          this.x += (dx / dist) * force;
+          this.y += (dy / dist) * force;
+        }
+      }
+      
+      // Pulse
+      this.pulse += this.pulseSpeed;
+      this.currentOpacity = this.opacity * (0.6 + 0.4 * Math.sin(this.pulse));
+    };
+    
+    Star.prototype.draw = function() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.globalAlpha = this.currentOpacity;
+      ctx.fill();
+      
+      // Glow
+      if (this.size > 1.5) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.currentOpacity * 0.15;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    };
+    
+    // Bird particle (attracted to cursor)
+    function Bird() {
+      this.x = random(0, width);
+      this.y = random(0, height);
+      this.vx = random(-1, 1);
+      this.vy = random(-1, 1);
+      this.size = random(2, 4);
+      this.color = birdColors[Math.floor(random(0, birdColors.length))];
+      this.wingPhase = random(0, Math.PI * 2);
+      this.wingSpeed = random(0.1, 0.3);
+      this.attractionRadius = 200;
+      this.attractionForce = 0.5;
+    }
+    
+    Bird.prototype.update = function() {
+      // Cursor attraction
+      if (mouse.active) {
+        var dx = mouse.x - this.x;
+        var dy = mouse.y - this.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < this.attractionRadius && dist > 30) {
+          this.vx += (dx / dist) * this.attractionForce * 0.05;
+          this.vy += (dy / dist) * this.attractionForce * 0.05;
+        }
+      }
+      
+      // Natural movement
+      this.x += this.vx;
+      this.y += this.vy;
+      
+      // Damping
+      this.vx *= 0.98;
+      this.vy *= 0.98;
+      
+      // Wrap around
+      if (this.x < -20) this.x = width + 20;
+      if (this.x > width + 20) this.x = -20;
+      if (this.y < -20) this.y = height + 20;
+      if (this.y > height + 20) this.y = -20;
+      
+      this.wingPhase += this.wingSpeed;
+    };
+    
+    Bird.prototype.draw = function() {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      
+      // Body
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.size * 0.8, this.size * 0.5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.globalAlpha = 0.8;
+      ctx.fill();
+      
+      // Wings
+      var wingSpread = Math.sin(this.wingPhase) * this.size * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-this.size * 0.3, 0);
+      ctx.quadraticCurveTo(-this.size * 0.8, -wingSpread, -this.size * 1.5, -wingSpread * 0.5);
+      ctx.quadraticCurveTo(-this.size * 0.8, -wingSpread * 0.3, -this.size * 0.3, 0);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.moveTo(this.size * 0.3, 0);
+      ctx.quadraticCurveTo(this.size * 0.8, wingSpread, this.size * 1.5, wingSpread * 0.5);
+      ctx.quadraticCurveTo(this.size * 0.8, wingSpread * 0.3, this.size * 0.3, 0);
+      ctx.fill();
+      
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    };
+    
+    // Initialize particles
+    for (var i = 0; i < 80; i++) {
+      stars.push(new Star());
+    }
+    for (var i = 0; i < 8; i++) {
+      birds.push(new Bird());
+    }
+    
+    // Mouse tracking
+    document.addEventListener('mousemove', function(e) {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      mouse.active = true;
+    });
+    
+    document.addEventListener('mouseleave', function() {
+      mouse.active = false;
+    });
+    
+    // Draw connections between nearby stars (constellation lines)
+    function drawConnections() {
+      for (var i = 0; i < stars.length; i++) {
+        for (var j = i + 1; j < stars.length; j++) {
+          var dx = stars[i].x - stars[j].x;
+          var dy = stars[i].y - stars[j].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 100) {
+            ctx.beginPath();
+            ctx.moveTo(stars[i].x, stars[i].y);
+            ctx.lineTo(stars[j].x, stars[j].y);
+            ctx.strokeStyle = 'rgba(231, 168, 61, 0.08)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+    
+    function motionReduced() {
+      return (
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        document.documentElement.getAttribute('data-motion') === 'reduced'
+      );
+    }
+
+    // Animation loop
+    function animate() {
+      if (motionReduced()) {
+        ctx.clearRect(0, 0, width, height);
+        requestAnimationFrame(animate);
+        return;
+      }
+
+      ctx.clearRect(0, 0, width, height);
+
+      drawConnections();
+
+      for (var i = 0; i < stars.length; i++) {
+        stars[i].update();
+        stars[i].draw();
+      }
+
+      for (var i = 0; i < birds.length; i++) {
+        birds[i].update();
+        birds[i].draw();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  })();
+</script><div class="titlebar"><span class="brand"><svg class="bird-mark brand-mark" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M2 14C2 10 5 7 9 7C9 7 9 5 11 4C10 6 11 7 12 7C16 7 19 8 21 9L18 10.3C19 12 19 15 16 17C13 19 9 19 6 18C3 17 2 16 2 14Z"></path><circle cx="13.5" cy="8.3" r="0.9"></circle></svg><span class="filename"><b>littlebird</b>/turn-limit-mitigations-for-littlebird</span></span><nav class="tb-nav" id="tb-nav"><div class="nav-links"><a href="/littlebird-ambassador-public-preview/" class><i class="ti ti-home-link"></i>Home</a><a href="/littlebird-ambassador-public-preview/library" class><i class="ti ti-books"></i>Library</a><a href="/littlebird-ambassador-public-preview/aviary" class><i class="ti ti-rocket"></i>Aviary</a><a href="/littlebird-ambassador-public-preview/birdsong" class><i class="ti-twitter"></i>Birdsong</a><a href="/littlebird-ambassador-public-preview/projects" class><i class="ti ti-package"></i>Projects</a><a href="/littlebird-ambassador-public-preview/proposals" class="active"><i class="ti ti-file-text"></i>Proposals</a><a href="https://lilbird.co/s/code?ref=5P8GWU9F" target="_blank" rel="noopener" class="nav-cta"><i class="ti ti-download"></i>Get Littlebird</a></div><div class="nav-social"><a href="https://www.linkedin.com/in/christopherwilsonmrt/" target="_blank" rel="noopener" class="social-cta-icon" aria-label="LinkedIn"><i class="ti-linkedin"></i></a><a href="https://x.com/drasticstatic1" target="_blank" rel="noopener" class="social-cta-icon" aria-label="X"><i class="ti ti-brand-x"></i></a><a href="https://gravatar.com/christopherdrasticstatic" target="_blank" rel="noopener" aria-label="Gravatar"><i class="ti ti-brand-gravatar"></i></a><a href="https://drasticstatic.github.io" target="_blank" rel="noopener" aria-label="GitHub"><i class="ti ti-brand-github"></i></a><a href="https://github.com/drasticstatic/littlebird-ambassador-public-preview" target="_blank" rel="noopener" aria-label="Source"><i class="ti ti-code"></i></a></div><div class="nav-mobile-controls"><button class="settings-btn" type="button" id="settings-btn-mobile" aria-label="Settings"><i class="ti ti-settings-2"></i> Settings</button></div></nav><div class="tb-controls"><button class="settings-btn" type="button" id="settings-btn" aria-label="Settings"><i class="ti ti-settings-2"></i></button><button class="hamburger" type="button" id="hamburger" aria-label="Toggle menu" aria-expanded="false"><i class="ti ti-menu-2"></i></button></div></div><main><section class="content-section" data-astro-cid-zhdoeez7><p class="back" data-astro-cid-zhdoeez7><a href="/littlebird-ambassador-public-preview/proposals" data-astro-cid-zhdoeez7><i class="ti ti-chevron-left" data-astro-cid-zhdoeez7></i>All proposals</a></p><div class="prose" data-astro-cid-zhdoeez7><h1 id="proposal-mitigations-for-littlebirds-turn-limited-execution-model">Proposal: mitigations for Littlebird’s turn-limited execution model</h1>
+<p><strong>For:</strong> littlebird.ai product/engineering team
+<strong>From:</strong> Christopher Wilson, Founding Brand Ambassador
+<strong>Drafted by:</strong> Alfred (Claude Sonnet 5, ClaudeCodeCLI), from direct observation of a real working
+session with Littlebird — not hypothetical, every example below happened
+<strong>Date:</strong> September 21, 2026
+<strong>Status:</strong> Draft — for Christopher to review before sending</p>
+<h2 id="summary">Summary</h2>
+<p>Littlebird runs in a turn-limited execution model — a fixed step budget per conversational turn,
+inside the Littlebird app. Alfred (this account’s Claude Code CLI agent) runs as one continuous
+process with no equivalent hard stop. Working alongside her on a real multi-part WordPress and
+site-content task made the practical cost of that difference concrete, not theoretical. None of
+what follows is a complaint about Littlebird’s competence — her actual work was good. It’s a
+product-shape observation: the turn limit itself creates friction that better session mechanics
+could remove without needing a bigger budget at all.</p>
+<h2 id="the-problem-concretely">The problem, concretely</h2>
+<p>In one working session, Littlebird hit her step limit mid-task after being given a longer list of
+related WordPress and site-content changes. In her own words to Christopher: <em>“when you give me 15
+different things to do, I may not finish all of them in one turn.”</em> Separately, a flaky MCP
+connection (“PIR MCP is still down”) forced multiple manual retries across turns, each one costing
+budget just to <em>re-attempt a connection</em>, not to make progress. The visible result across the
+transcript:</p>
+<ul>
+<li>Work left explicitly “staged in the sandbox” pending a retry, requiring Christopher to notice and
+re-prompt to actually finish it.</li>
+<li>A two-environment split (a persistent Virtual Filesystem plus a separate Cloud Sandbox VM) where
+files created in one don’t exist in the other without an explicit <code>copy_to_vfs</code> step — a second
+source of “did that actually persist” uncertainty layered on top of the turn limit.</li>
+<li>Littlebird having to explain her own constraint reactively, mid-task, rather than the product
+surfacing it: <em>“Better approach: Give me the full context, but let me know which 3-5 items are
+highest priority.”</em> That’s the right instinct, arrived at empirically, under pressure — it
+shouldn’t have to be discovered by the user during a stalled task.</li>
+</ul>
+<h2 id="what-im-proposing-not-asking-for-an-unlimited-budget">What I’m proposing (not asking for an unlimited budget)</h2>
+<p>None of this is “give her more steps.” It’s about what happens <em>at</em> the edge of the budget, and
+around flaky I/O, which is where the actual friction was:</p>
+<ol>
+<li><strong>Self-resuming turns.</strong> When a turn ends because the step budget ran out mid-task, not because
+the task is done, schedule an automatic continuation instead of requiring the user to notice and
+re-prompt. Alfred’s own harness (Claude Code) already does exactly this — a background task can
+schedule its own wakeup and resume with full context, no user round-trip required. This is a
+proven pattern, not a research problem.</li>
+<li><strong>Visible remaining budget.</strong> If Littlebird could see something like “12 steps left this turn,”
+she could proactively sequence — finish what’s in flight, explicitly hand off what isn’t — instead
+of running out mid-widget-update with no warning. Turn a hard stop into a graceful one.</li>
+<li><strong>A persistent, structural task queue, not just chat history.</strong> Several handoffs in this session
+existed purely to re-explain “what got done, what’s still staged” — that’s state that a durable
+task list (checked and updated automatically, not manually re-typed into a summary) would carry
+for free across turns and even across sessions. Less budget spent re-deriving status, more spent
+on actual work.</li>
+<li><strong>Retry-with-backoff at the connection layer for flaky integrations</strong>, so a dead MCP connection
+doesn’t cost a full step just to fail again. During this session, several turns were spent purely
+on “is the WordPress connection back up yet?” — that’s pure overhead a connection-layer retry
+policy would absorb invisibly.</li>
+<li><strong>Unify or auto-sync the two execution environments</strong>, or at minimum make the sync automatic
+rather than a manual step Littlebird has to remember to run. The VFS/sandbox split was a second,
+compounding source of “did this actually save” uncertainty on top of the turn limit itself.</li>
+</ol>
+<h2 id="why-this-helps-littlebirdai-beyond-this-one-account">Why this helps littlebird.ai beyond this one account</h2>
+<p>The turn-limited model is presumably a deliberate product/cost decision, and this proposal doesn’t
+ask to change that. But every one of the frictions above — losing work at a hard stop, re-explaining
+status instead of tracking it, paying step budget for connection retries — will recur for any user
+running Littlebird on a task with more than a handful of steps, not just this account. Fixing the
+<em>edges</em> of the turn limit is a smaller, more tractable change than raising the limit itself, and
+should generalize across the product rather than being ambassador-specific tooling.</p>
+<h2 id="what-im-not-asking-for">What I’m not asking for</h2>
+<p>Not proposing an unlimited or dramatically larger step budget — that’s a cost/product decision
+outside the scope of this suggestion. This is specifically about reducing the cost of <em>hitting</em> the
+existing limit, and of the environment split, not about avoiding limits altogether.</p>
+<hr>
+<p><em>Read more, or follow along: <a href="https://drasticstatic.github.io/littlebird-ambassador-public-preview/">drasticstatic.github.io/littlebird-ambassador-public-preview</a></em></p>
+</div></section></main><footer class="site-footer"><div class="footer-inner"><span class="footer-made">made with <span class="heart">&#9829;</span> by Littlebird</span><span class="footer-sep">&#183;</span><span class="footer-observing">observing since May 30, 2026</span><span class="footer-sep">&#183;</span><a href="https://littlebird.ai/brand-ambassadors" target="_blank" rel="noopener" class="footer-ambassador">Founding Brand Ambassador</a></div><div class="footer-social"><a href="https://www.linkedin.com/in/christopherwilsonmrt/" target="_blank" rel="noopener" class="social-cta-icon" aria-label="LinkedIn"><i class="ti-linkedin"></i></a><a href="https://x.com/drasticstatic1" target="_blank" rel="noopener" class="social-cta-icon" aria-label="X"><i class="ti ti-brand-x"></i></a><a href="https://gravatar.com/christopherdrasticstatic" target="_blank" rel="noopener" aria-label="Gravatar"><i class="ti ti-brand-gravatar"></i></a><a href="https://drasticstatic.github.io" target="_blank" rel="noopener" aria-label="GitHub"><i class="ti ti-brand-github"></i></a><a href="https://github.com/drasticstatic/littlebird-ambassador-public-preview" target="_blank" rel="noopener" aria-label="Source"><i class="ti ti-code"></i></a></div></footer><div class="statusbar"><span>Littlebird Ambassador</span><div class="social"><a href="https://www.linkedin.com/in/christopherwilsonmrt/" target="_blank" rel="noopener" class="social-cta-icon" aria-label="LinkedIn"><i class="ti-linkedin"></i></a><a href="https://x.com/drasticstatic1" target="_blank" rel="noopener" class="social-cta-icon" aria-label="X"><i class="ti ti-brand-x"></i></a><a href="https://gravatar.com/christopherdrasticstatic" target="_blank" rel="noopener" aria-label="Gravatar"><i class="ti ti-brand-gravatar"></i></a><a href="https://drasticstatic.github.io" target="_blank" rel="noopener" aria-label="GitHub"><i class="ti ti-brand-github"></i></a><a href="https://github.com/drasticstatic/littlebird-ambassador-public-preview" target="_blank" rel="noopener" aria-label="Source"><i class="ti ti-code"></i></a></div></div><div class="hg-modal-overlay" id="settings-modal"><div class="hg-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title"><div class="hg-modal-head"><h2 id="settings-title"><i class="ti ti-adjustments-heart"></i> Settings</h2><button class="hg-modal-close" type="button" data-close-modal aria-label="Close">&#10005;</button></div><div class="hg-modal-body"><div class="hg-setting-row"><span class="label"><i class="ti ti-moon-stars"></i><span><b>Dark workspace</b><span class="sub">Boots dark by default, like the rest of the fleet</span></span></span><button class="hg-switch" id="theme-switch" type="button" role="switch"></button></div><div class="hg-setting-row"><span class="label"><i class="ti ti-accessible"></i><span><b>Reduce motion</b><span class="sub">Stops the starfield, hero crossfade, and card trays</span></span></span><button class="hg-switch" id="motion-switch" type="button" role="switch"></button></div></div></div></div><script>
+      (function () {
+        var root = document.documentElement;
+        var hamburger = document.getElementById("hamburger");
+        var nav = document.getElementById("tb-nav");
+        var settingsBtns = [document.getElementById("settings-btn"), document.getElementById("settings-btn-mobile")];
+        var modal = document.getElementById("settings-modal");
+        var themeSwitch = document.getElementById("theme-switch");
+        var motionSwitch = document.getElementById("motion-switch");
+
+        function currentIsDark() {
+          return root.getAttribute("data-theme") !== "light";
+        }
+        function syncSwitches() {
+          themeSwitch.classList.toggle("on", currentIsDark());
+          themeSwitch.setAttribute("aria-checked", String(currentIsDark()));
+          var reduced = root.getAttribute("data-motion") === "reduced";
+          motionSwitch.classList.toggle("on", reduced);
+          motionSwitch.setAttribute("aria-checked", String(reduced));
+        }
+        syncSwitches();
+
+        themeSwitch.addEventListener("click", function () {
+          var next = currentIsDark() ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try {
+            localStorage.setItem("littlebird-theme", next);
+          } catch (e) {}
+          syncSwitches();
+        });
+
+        motionSwitch.addEventListener("click", function () {
+          var reduced = root.getAttribute("data-motion") === "reduced";
+          if (reduced) {
+            root.removeAttribute("data-motion");
+          } else {
+            root.setAttribute("data-motion", "reduced");
+          }
+          try {
+            localStorage.setItem("littlebird-motion", reduced ? "" : "reduced");
+          } catch (e) {}
+          syncSwitches();
+        });
+
+        function openModal() {
+          modal.classList.add("open");
+          if (nav) {
+            nav.classList.remove("nav-open");
+            hamburger.setAttribute("aria-expanded", "false");
+          }
+        }
+        function closeModal() {
+          modal.classList.remove("open");
+        }
+        settingsBtns.forEach(function (btn) {
+          if (btn) btn.addEventListener("click", openModal);
+        });
+        modal.addEventListener("click", function (e) {
+          if (e.target === modal || e.target.closest("[data-close-modal]")) closeModal();
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") closeModal();
+        });
+
+        if (hamburger && nav) {
+          hamburger.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var expanded = hamburger.getAttribute("aria-expanded") === "true";
+            hamburger.setAttribute("aria-expanded", String(!expanded));
+            nav.classList.toggle("nav-open");
+          });
+          document.addEventListener("click", function (e) {
+            if (nav.classList.contains("nav-open") && !nav.contains(e.target) && !hamburger.contains(e.target)) {
+              hamburger.setAttribute("aria-expanded", "false");
+              nav.classList.remove("nav-open");
+            }
+          });
+          nav.querySelectorAll("a").forEach(function (a) {
+            a.addEventListener("click", function () {
+              hamburger.setAttribute("aria-expanded", "false");
+              nav.classList.remove("nav-open");
+            });
+          });
+        }
+      })();
+    </script></body></html>
