@@ -46,9 +46,21 @@ transcripts, messages, prior conversations. Powerful, but see the scoping warnin
 `ingest` — **write access**, not just read. Saves text into Littlebird's own context store, where it
 becomes available to her future replies and routine runs. This is the mechanism that makes the
 bridge two-way: Alfred (or any connected MCP client) can push technical/project context *into*
-Littlebird, not just pull personal/observational context *out* of her. Not yet used for anything in
-this project — worth exploring deliberately rather than testing casually, since anything ingested
-here becomes part of what she draws on going forward.
+Littlebird, not just pull personal/observational context *out* of her. Worth using deliberately
+rather than casually, since anything ingested becomes part of what she draws on going forward.
+
+**First use, 2026-10-28 (Alfred, Opus 5.5, from `~/code/taylordwraps`):** one ~1.2K-character
+project summary of Taylor'd Wraps (bundles retired, both lanes live and checked, what already
+shipped so her Morning Brief stops listing it, the deploy keys at 10:16Z were intended, where her
+audit lives). Acknowledged "Saved to Littlebird context." The exact text is the last section of
+`drasticstatic/taylordwraps` → `AGENT-SYNC/created-by-alfred/20261028-audit-for-littlebird.md`.
+Rule kept: project facts only, nothing from her own private context, no secrets or personal emails.
+
+**Also new since this doc was written:** `get_action_cards`, `update_action_card`,
+`dismiss_action_card` (cards are drafts awaiting Chris's approval in Littlebird; no tool approves or
+sends one). Conversation reads return final replies only (her collapsed tool steps aren't exposed;
+attachments are ids). A one-day `search_user_context` over screen snapshots returned ~72K characters,
+so keep date ranges and queries narrow.
 
 Also present, administrative: `LB_INTERNAL_GET_SUBSCRIPTION_STATUS` (plan, billing, renewal date).
 
