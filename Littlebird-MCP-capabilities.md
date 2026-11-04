@@ -53,7 +53,7 @@ rather than casually, since anything ingested becomes part of what she draws on 
 project summary of Taylor'd Wraps (bundles retired, both lanes live and checked, what already
 shipped so her Morning Brief stops listing it, the deploy keys at 10:16Z were intended, where her
 audit lives). Acknowledged "Saved to Littlebird context." The exact text is the last section of
-`drasticstatic/taylordwraps` → `agent-notes/by-alfred/20261028-audit-for-littlebird.md`.
+`drasticstatic/taylordwraps` → its agent notes, `by-alfred/20261028-audit-for-littlebird.md`.
 Rule kept: project facts only, nothing from her own private context, no secrets or personal emails.
 
 **Also new since this doc was written:** `get_action_cards`, `update_action_card`,
